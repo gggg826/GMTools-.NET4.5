@@ -1,0 +1,60 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Text;
+using System.Windows.Forms;
+
+namespace GameToolsClient
+{
+    public partial class ActivityMain : FengNiao.GameTools.Util.BaseForm
+    {
+        public ActivityMain()
+        {
+
+            this.StartPosition = FormStartPosition.CenterScreen;
+            InitializeComponent();
+        }
+
+        private void mtiActivityImport_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+            ActivityImport frmActivityManager = new ActivityImport();
+            frmActivityManager.ShowDialog();
+            this.Show();
+        }
+
+        private void mtiSolution_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+            SolutionManager frmSolutionManager = new SolutionManager();
+            frmSolutionManager.ShowDialog();
+            this.Show();
+        }
+
+        private void mtiActivityManager_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+            ActivityManager frmActivityManager = new ActivityManager();
+            frmActivityManager.ShowDialog();
+            this.Show();
+        }
+
+        private void mtiRecommendManager_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+            RecommendManager frmRecommendManager = new RecommendManager();
+            frmRecommendManager.ShowDialog();
+            this.Show();
+        }
+
+        private void mtiActivityDetail_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+            ActivityItem frmActivityItem = new ActivityItem();
+            frmActivityItem.ShowDialog();
+            this.Show();
+        }
+    }
+}

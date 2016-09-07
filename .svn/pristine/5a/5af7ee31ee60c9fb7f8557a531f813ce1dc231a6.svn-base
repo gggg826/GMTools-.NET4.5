@@ -1,0 +1,420 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Text;
+using System.Windows.Forms;
+using FengNiao.GameTools.Util;
+using System.Net;
+using FengNiao.GameToolsCommon;
+using DevComponents.DotNetBar;
+using GameToolsCommon;
+
+namespace GameToolsClient
+{
+    
+    public partial class ActivityItem : FengNiao.GameTools.Util.BaseForm
+    {
+        Color errorColor = Color.DarkGray;
+        Color successColor = Color.GreenYellow;
+        Dictionary<int, string> CountsModleDir = new Dictionary<int, string>();
+        public ActivityItem()
+        {
+            this.BackColor = Color.White;
+            this.StartPosition = FormStartPosition.CenterScreen;
+            InitializeComponent();
+        }
+
+        private void gvDataList_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.ColumnIndex == 9)
+            {
+                if (gvDataList.Rows[e.RowIndex].Tag != null)
+                {
+                    CustomMessageBox.Error(this, "不能删除已经生效的数据");
+                    return;
+                }
+                if (DialogResult.Yes == CustomMessageBox.Confirm(this, "确定要删除记录么?"))
+                {
+                    gvDataList.Rows.RemoveAt(e.RowIndex);
+                }
+            }
+        }
+
+        private void InitComboBoxColumn()
+        {
+            DataGridViewComboBoxColumn colShow = new DataGridViewComboBoxColumn();
+            colShow.Name = "item_name";
+            colShow.HeaderText = "活动名称";
+            colShow.Width = 200;
+            foreach (var item in CountsModleDir)
+            {
+                colShow.Items.Add(item.Value + "-" + item.Key);
+            }
+            colShow.DisplayIndex = 0;
+            gvDataList.Columns.Insert(3, colShow);
+
+            InitList();
+        }
+
+        private void InitList()
+        {
+            string strArgs = GlobalObject.GetModuleAndMethodArgs(HttpModuleType.Activity_Details, HttpMethodType.GetList);
+            CustomWebRequest.Request(GlobalObject.HttpServerIP, strArgs, Encoding.UTF8, GetListCallback);
+
+        }
+
+
+        //初始化DataGridView
+        private void GetListCallback(object sender, UploadDataCompletedEventArgs e)
+        {
+            loadingControl.Visible = false;
+            if (e.Error == null)
+            {
+                try
+                {
+                    string strContent = Encoding.UTF8.GetString(e.Result);
+                    ResultModel requestResult = FengNiao.GameTools.Json.Serialize.ConvertJsonToObject<ResultModel>(strContent);
+                    if (requestResult.IsSuccess)
+                    {
+                        List<FengNiao.GMTools.Database.Model.tbl_activity_details> list = FengNiao.GameTools.Json.Serialize.ConvertJsonToObjectList<FengNiao.GMTools.Database.Model.tbl_activity_details>(requestResult.Content);
+                        //GlobalObject.CountsList = list;
+                        InitList(list);
+                    }
+                    else
+                    {
+                        CustomMessageBox.Error(this, string.Format("获取数据失败\r\n{0}", requestResult.Content));
+                    }
+                }
+                catch
+                {
+                    CustomMessageBox.Error(this, "服务器返回的数据无效");
+                }
+            }
+            else
+            {
+                CustomMessageBox.Error(this, "连接服务器异常，请确认是否已经联网");
+            }
+        }
+
+
+        //初始化DataGridView
+        private void InitList(List<FengNiao.GMTools.Database.Model.tbl_activity_details> countList)
+        {
+            this.btnSave.Enabled = true;
+            gvDataList.Rows.Clear();
+            gvDataList.Columns[0].ReadOnly = true;
+            if (countList.Count != 0)
+            {
+                foreach (FengNiao.GMTools.Database.Model.tbl_activity_details counts in countList)
+                {
+                    string name = string.Empty;
+                    if (CountsModleDir.TryGetValue(counts.fld_activity_id, out name))
+                    {
+                        int rowIndex = gvDataList.Rows.Add(counts.fld_record_id, counts.fld_solution_id, counts.fld_open_type, name + "-" + counts.fld_activity_id, counts.fld_preview_time, counts.fld_open_time, counts.fld_close_time, counts.fld_award_time);
+                        gvDataList.Rows[rowIndex].Tag = counts;
+                    }
+                    else
+                    {
+                        CustomMessageBox.Error(this, "初始化数据失败");
+                        return;
+                    }
+                }
+            }
+            btnSave.Enabled = true;
+            btnNew.Enabled = true;
+            //InitComboBoxColumn();
+
+        }
+
+        private void ActivityItem_Load(object sender, EventArgs e)
+        {
+            InitModleDir();
+        }
+
+        private void InitModleDir()
+        {
+            string strArgs = GlobalObject.GetModuleAndMethodArgs(HttpModuleType.Activity, HttpMethodType.GetList);
+            CustomWebRequest.Request(GlobalObject.HttpServerIP, strArgs, Encoding.UTF8, GetCountModelCallBack);
+        }
+        private void GetCountModelCallBack(object sender, UploadDataCompletedEventArgs e)
+        {
+            if (e.Error == null)
+            {
+                try
+                {
+                    string strContent = Encoding.UTF8.GetString(e.Result);
+                    ResultModel requestResult = FengNiao.GameTools.Json.Serialize.ConvertJsonToObject<ResultModel>(strContent);
+                    if (requestResult.IsSuccess)
+                    {
+                        List<FengNiao.GMTools.Database.Model.tbl_activity> list = FengNiao.GameTools.Json.Serialize.ConvertJsonToObjectList<FengNiao.GMTools.Database.Model.tbl_activity>(requestResult.Content);
+                        foreach (FengNiao.GMTools.Database.Model.tbl_activity item in list)
+                        {
+                            CountsModleDir.Add(item.id, item.name);
+                        }
+                        GlobalObject.ActivityList = list;
+                        InitComboBoxColumn();
+                    }
+                    else
+                    {
+                        CustomMessageBox.Error(this, string.Format("获取数据失败\r\n{0}", requestResult.Content));
+                    }
+                }
+                catch
+                {
+                    CustomMessageBox.Error(this, "服务器返回的数据无效");
+                }
+            }
+            else
+            {
+                CustomMessageBox.Error(this, "连接服务器异常，请确认是否已经联网");
+            }
+        }
+
+        private void btnNew_Click(object sender, EventArgs e)
+        {
+            int index = gvDataList.Rows.Add();
+            string time = System.DateTime.Now.ToString("yyyy-MM-dd") + " 00:00:00";
+            gvDataList.Rows[index].Cells[4].Value = time;
+            gvDataList.Rows[index].Cells[5].Value = time;
+            gvDataList.Rows[index].Cells[6].Value = time;
+            gvDataList.Rows[index].Cells[7].Value = time;
+        }
+
+        private void btnSave_Click(object sender, EventArgs e)
+        {
+            bool isError = false;
+            string strErrorMsg = string.Empty;
+
+            List<OperationType> operationTypes = new List<OperationType>();
+            List<FengNiao.GMTools.Database.Model.tbl_activity_details> dataList = new List<FengNiao.GMTools.Database.Model.tbl_activity_details>();
+            List<string> guidList = new List<string>();
+            for (int i = 0; i < gvDataList.Rows.Count; i++)
+            {
+                int solution_id = 0;
+                int cellIndex = 1;
+                strErrorMsg = "方案名无效";
+                if (gvDataList.Rows[i].Cells[cellIndex].Value == null || !int.TryParse(gvDataList.Rows[i].Cells[cellIndex].Value.ToString(), out solution_id))
+                {
+                    isError = true;
+                    gvDataList.Rows[i].DefaultCellStyle.BackColor = errorColor;
+                    gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                }
+                else
+                {
+                    solution_id = int.Parse(gvDataList.Rows[i].Cells[cellIndex].Value.ToString()) ;
+                    if (string.IsNullOrEmpty(solution_id.ToString()))
+                    {
+                        isError = true;
+                        gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                    }
+                }
+
+                cellIndex = 2;
+                strErrorMsg = "开启类型无效";
+                int open_type = 0;
+                if (gvDataList.Rows[i].Cells[cellIndex].Value == null || !int.TryParse(gvDataList.Rows[i].Cells[cellIndex].Value.ToString(), out open_type))
+                {
+                    isError = true;
+                    gvDataList.Rows[i].DefaultCellStyle.BackColor = errorColor;
+                    gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                }
+                else
+                {
+                    open_type = int.Parse(gvDataList.Rows[i].Cells[cellIndex].Value.ToString());
+                    if (string.IsNullOrEmpty(open_type.ToString()))
+                    {
+                        isError = true;
+                        gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                    }
+                }
+
+                cellIndex = 3;
+                strErrorMsg = "活动无效";
+                int activity_id = 0;
+                string tempID = gvDataList.Rows[i].Cells[cellIndex].Value.ToString();
+                if (gvDataList.Rows[i].Cells[cellIndex].Value == null || !int.TryParse(tempID.Substring(tempID.LastIndexOf("-")+1), out activity_id))
+                {
+                    isError = true;
+                    gvDataList.Rows[i].DefaultCellStyle.BackColor = errorColor;
+                    gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                }
+                else
+                {
+                    activity_id = int.Parse(tempID.Substring(tempID.LastIndexOf("-") + 1));
+                    if (string.IsNullOrEmpty(activity_id.ToString()))
+                    {
+                        isError = true;
+                        gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                    }
+                }
+
+                cellIndex = 4;
+                strErrorMsg = "预览时间无效";
+                string preview_time = string.Empty;
+                if (gvDataList.Rows[i].Cells[cellIndex].Value == null)
+                {
+                    isError = true;
+                    gvDataList.Rows[i].DefaultCellStyle.BackColor = errorColor;
+                    gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                }
+                else
+                {
+                    preview_time = gvDataList.Rows[i].Cells[cellIndex].Value.ToString();
+                    if (string.IsNullOrEmpty(preview_time))
+                    {
+                        isError = true;
+                        gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                    }
+                }
+
+                cellIndex = 5;
+                strErrorMsg = "开始无效";
+                string open_time = string.Empty;
+                if (gvDataList.Rows[i].Cells[cellIndex].Value == null)
+                {
+                    isError = true;
+                    gvDataList.Rows[i].DefaultCellStyle.BackColor = errorColor;
+                    gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                }
+                else
+                {
+                    open_time = gvDataList.Rows[i].Cells[cellIndex].Value.ToString();
+                    if (string.IsNullOrEmpty(open_time))
+                    {
+                        isError = true;
+                        gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                    }
+                }
+
+                cellIndex = 6;
+                strErrorMsg = "结束时间无效";
+                string close_time = string.Empty;
+                if (gvDataList.Rows[i].Cells[cellIndex].Value == null)
+                {
+                    isError = true;
+                    gvDataList.Rows[i].DefaultCellStyle.BackColor = errorColor;
+                    gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                }
+                else
+                {
+                    close_time = gvDataList.Rows[i].Cells[cellIndex].Value.ToString();
+                    if (string.IsNullOrEmpty(close_time))
+                    {
+                        isError = true;
+                        gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                    }
+                }
+                cellIndex = 7;
+                strErrorMsg = "领奖时间无效";
+                string award_time = string.Empty;
+                if (gvDataList.Rows[i].Cells[cellIndex].Value == null)
+                {
+                    isError = true;
+                    gvDataList.Rows[i].DefaultCellStyle.BackColor = errorColor;
+                    gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                }
+                else
+                {
+                    award_time = gvDataList.Rows[i].Cells[cellIndex].Value.ToString();
+                    if (string.IsNullOrEmpty(award_time))
+                    {
+                        isError = true;
+                        gvDataList.Rows[i].Cells[cellIndex].ErrorText = strErrorMsg;
+                    }
+                }
+
+                cellIndex = 8;
+                //string guid = gvDataList.Rows[i].Cells[cellIndex].Value.ToString();
+                string guid = Guid.NewGuid().ToString();
+
+
+
+                if (gvDataList.Rows[i].Tag == null)
+                {
+                    FengNiao.GMTools.Database.Model.tbl_activity_details data = new FengNiao.GMTools.Database.Model.tbl_activity_details();
+                    data.fld_solution_id = solution_id;
+                    data.fld_open_type = open_type;
+                    data.fld_activity_id = activity_id;
+                    data.fld_open_time = open_time;
+                    data.fld_close_time = close_time;
+                    data.fld_preview_time = preview_time;
+                    data.fld_award_time = award_time;
+                    dataList.Add(data);
+                    operationTypes.Add(OperationType.Add);
+                    guidList.Add(guid);
+                }
+                else
+                {
+                    FengNiao.GMTools.Database.Model.tbl_activity_details data = gvDataList.Rows[i].Tag as FengNiao.GMTools.Database.Model.tbl_activity_details;
+                    data.fld_solution_id = solution_id;
+                    data.fld_open_type = open_type;
+                    data.fld_activity_id = activity_id;
+                    data.fld_open_time = open_time;
+                    data.fld_close_time = close_time;
+                    data.fld_preview_time = preview_time;
+                    data.fld_award_time = award_time;
+                    dataList.Add(data);
+                    operationTypes.Add(OperationType.Update);
+                    guidList.Add(guid);
+                }
+            }
+            if (isError)
+            {
+                CustomMessageBox.Error(this, "保存失败，请根据提示检查数据");
+            }
+            else
+            {
+                if (dataList.Count == operationTypes.Count && dataList.Count == guidList.Count)
+                //if (dataList.Count == operationTypes.Count)
+
+                {
+                        loadingControl.Visible = true;
+                    //for (int i = 0; i < dataList.Count; i++)
+                    //{
+                    //    gvDataList.Rows[i].Tag = dataList[i];
+                    //}
+
+                    string strArgs = GlobalObject.GetModuleAndMethodArgs(HttpModuleType.Activity_Details, HttpMethodType.Update);
+                    string strModel = FengNiao.GameTools.Json.Serialize.ConvertObjectToJsonList<List<FengNiao.GMTools.Database.Model.tbl_activity_details>>(dataList);
+                    string strOperationTypes = FengNiao.GameTools.Json.Serialize.ConvertObjectToJsonList<List<OperationType>>(operationTypes);
+                    string strGuids = FengNiao.GameTools.Json.Serialize.ConvertObjectToJsonList<List<string>>(guidList);
+
+                    strArgs = string.Format("{0}&Model={1}&OperationType={2}&guid={3}", strArgs, System.Web.HttpUtility.UrlEncode(strModel, Encoding.UTF8), strOperationTypes, strGuids);
+                    CustomWebRequest.Request(GlobalObject.HttpServerIP, strArgs, Encoding.UTF8, UpdateCallback);
+                }
+            }
+        }
+
+        private void UpdateCallback(object sender, UploadDataCompletedEventArgs e)
+        {
+            loadingControl.Visible = false;
+            if (e.Error == null)
+            {
+                try
+                {
+                    string strContent = Encoding.UTF8.GetString(e.Result);
+                    ResultModel requestResultModel = FengNiao.GameTools.Json.Serialize.ConvertJsonToObject<ResultModel>(strContent);
+                    if (requestResultModel.IsSuccess)
+                    {
+                        CustomMessageBox.Info(this, "保存完毕");
+                        InitList();
+                    }
+                    else
+                    {
+                        CustomMessageBox.Error(this, string.Format("{0}", requestResultModel.Content));
+                    }
+                }
+                catch
+                {
+                    CustomMessageBox.Error(this, "服务器返回的数据无效");
+                }
+            }
+            else
+            {
+                CustomMessageBox.Error(this, "连接服务器异常，请确认是否已经联网");
+            }
+        }
+    }
+}

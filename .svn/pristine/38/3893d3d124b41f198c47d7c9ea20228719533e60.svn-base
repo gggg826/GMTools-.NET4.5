@@ -1,0 +1,459 @@
+﻿using FengNiao.GameToolsCommon;
+using GameToolsCommon;
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Text;
+using System.Windows.Forms;
+using FengNiao.GameTools.Util;
+
+namespace GameToolsClient
+{
+    public partial class SolutionManager : FengNiao.GameTools.Util.BaseForm
+    {
+        
+        private bool isPackageSelector = false;
+        public bool IsSelector
+        {
+            set
+            {
+                isPackageSelector = value;
+                if (value)
+                {
+                    btnNew.Visible = false;
+                    btnRefresh.Visible = false;
+                    gvDataList.Columns[11].Visible = false;
+                    gvDataList.Columns[12].Visible = false;
+                    gvDataList.Columns[0].Visible = true;
+                    for (int i = 1; i < gvDataList.Columns.Count; i++)
+                    {
+                        gvDataList.Columns[i].ReadOnly = true;
+                    }
+                }
+            }
+            get { return isPackageSelector; }
+        }
+        
+        public SolutionManager()
+        {
+            this.StartPosition = FormStartPosition.CenterScreen;
+            InitializeComponent();
+        }
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            RefreshLayout();
+        }
+        private void RefreshLayout()
+        {
+            if (this.IsHandleCreated && gvDataList.IsHandleCreated)
+            {
+                gvDataList.Left = base.ClientBounds.X + 10;
+                gvDataList.Top = base.ClientBounds.Y + 30;
+                gvDataList.Width = base.ClientBounds.Width - 20;
+                gvDataList.Height = base.ClientBounds.Height - 40;
+            }
+        }
+
+        private void SolutionManager_Load(object sender, EventArgs e)
+        {
+            RefreshLayout();
+            InitServerGroup();
+        }
+        private void InitServerGroup()
+        {
+            loadingControl.Visible = true;
+            string strArgs = GlobalObject.GetModuleAndMethodArgs(HttpModuleType.Server, HttpMethodType.GetList);
+            CustomWebRequest.Request(GlobalObject.HttpServerIP, strArgs, Encoding.UTF8, GetListServerGroupCallback);
+        }
+        private void GetListServerGroupCallback(object sender, UploadDataCompletedEventArgs e)
+        {
+            loadingControl.Visible = false;
+            if (e.Error == null)
+            {
+                try
+                {
+                    string strContent = Encoding.UTF8.GetString(e.Result);
+                    ResultModel requestResult = FengNiao.GameTools.Json.Serialize.ConvertJsonToObject<ResultModel>(strContent);
+                    if (requestResult.IsSuccess)
+                    {
+                        List<FengNiao.GMTools.Database.Model.tbl_server> PackageList = FengNiao.GameTools.Json.Serialize.ConvertJsonToObjectList<FengNiao.GMTools.Database.Model.tbl_server>(requestResult.Content);
+                        GlobalObject.ServerList = PackageList;
+                        Init();
+                    }
+                    else
+                    {
+                        CustomMessageBox.Error(this, string.Format("获取数据失败\r\n{0}", requestResult.Content));
+                    }
+                }
+                catch
+                {
+                    CustomMessageBox.Error(this, "服务器返回的数据无效");
+                }
+            }
+            else
+            {
+                CustomMessageBox.Error(this, "连接服务器异常，请确认是否已经联网");
+            }
+        }
+        
+        private void Init()
+        {
+            loadingControl.Visible = true;
+            string strArgs = GlobalObject.GetModuleAndMethodArgs(HttpModuleType.Activity_Solution, HttpMethodType.GetList);
+            CustomWebRequest.Request(GlobalObject.HttpServerIP, strArgs, Encoding.UTF8, GetListCallback);
+        }
+        private void GetListCallback(object sender, UploadDataCompletedEventArgs e)
+        {
+            loadingControl.Visible = false;
+            if (e.Error == null)
+            {
+                try
+                {
+                    string strContent = Encoding.UTF8.GetString(e.Result);
+                    ResultModel requestResult = FengNiao.GameTools.Json.Serialize.ConvertJsonToObject<ResultModel>(strContent);
+                    if (requestResult.IsSuccess)
+                    {
+                        List<FengNiao.GMTools.Database.Model.tbl_activity_solution> dataList = FengNiao.GameTools.Json.Serialize.ConvertJsonToObjectList<FengNiao.GMTools.Database.Model.tbl_activity_solution>(requestResult.Content);
+                        GlobalObject.SolutionList = dataList;
+                        InitList(dataList);
+                    }
+                    else
+                    {
+                        CustomMessageBox.Error(this, string.Format("获取数据失败\r\n{0}", requestResult.Content));
+                    }
+                }
+                catch
+                {
+                    CustomMessageBox.Error(this, "服务器返回的数据无效");
+                }
+            }
+            else
+            {
+                CustomMessageBox.Error(this, "连接服务器异常，请确认是否已经联网");
+            }
+        }
+        private void InitList(List<FengNiao.GMTools.Database.Model.tbl_activity_solution> dataList)
+        {
+            gvDataList.Rows.Clear();
+            foreach (FengNiao.GMTools.Database.Model.tbl_activity_solution data in dataList)
+            {
+                int rowIndex = gvDataList.Rows.Add(null, data.fld_id, data.fld_name, GetServerGroupNames(data.fld_servers));
+                gvDataList.Rows[rowIndex].Tag = data;
+                gvDataList.Rows[rowIndex].Cells[5].Value = Guid.NewGuid();
+            }
+        }
+
+        private string GetServerGroupNames(string visible_group)
+        {
+            if (visible_group == null || visible_group == "")
+                return null;
+
+            else if (!visible_group.Contains(";"))
+            {
+                foreach (var item in GlobalObject.ServerList)
+                {
+                    if (item.fld_server_id == int.Parse(visible_group))
+                        return item.fld_server_name;
+                }
+            }
+
+            else
+            {
+                string[] names = visible_group.Split(';');
+                string showNames = string.Empty;
+                for (int i = 0; i < names.Length; i++)
+                {
+                    foreach (var item in GlobalObject.ServerList)
+                    {
+                        if (item.fld_server_id == int.Parse(names[i]))
+                            showNames += item.fld_server_name + ";";
+                    }
+                }
+                return showNames.Substring(0, showNames.LastIndexOf(';'));
+            }
+            return "获取失败";
+        }
+        private string ServerNameToID(string names)
+        {
+            if (names == null || names == "")
+                return null;
+
+            else if (!names.Contains(";"))
+            {
+                foreach (var item in GlobalObject.ServerList)
+                {
+                    if (item.fld_server_name == names)
+                        return item.fld_server_id.ToString();
+                }
+            }
+
+            else
+            {
+                string[] strnames = names.Split(';');
+                string showNames = string.Empty;
+                for (int i = 0; i < strnames.Length; i++)
+                {
+                    foreach (var item in GlobalObject.ServerList)
+                    {
+                        if (item.fld_server_name == strnames[i])
+                            showNames += item.fld_server_id.ToString() + ";";
+                    }
+
+                }
+                return showNames.Substring(0, showNames.LastIndexOf(';'));
+            }
+            return string.Empty;
+        }
+
+        private void btnSave_Click(object sender, EventArgs e)
+        {
+            loadingControl.Visible = true;
+            bool isError = false;
+            string strErrorMsg = string.Empty;
+
+            int sameOne = 0, sameTwo = 0;
+            if (!CheckRepeate(ref sameOne, ref sameTwo))
+            {
+                gvDataList.Rows[sameOne].Cells[3].ErrorText = "包含相同的服务器组";
+                gvDataList.Rows[sameTwo].Cells[3].ErrorText = "包含相同的服务器组";
+                loadingControl.Visible = false;
+                CustomMessageBox.Error(this, "包含相同的服务器组");
+                return;
+            }
+            
+            List<OperationType> operationTypes = new List<OperationType>();
+            List<FengNiao.GMTools.Database.Model.tbl_activity_solution> dataList = new List<FengNiao.GMTools.Database.Model.tbl_activity_solution>();
+            List<string> guidList = new List<string>();
+            for (int i = 0; i < gvDataList.Rows.Count; i++)
+            {
+
+
+                int cellIndex = 1;
+                int fld_id = 0;
+                if (gvDataList.Rows[i].Cells[cellIndex].Value != null)
+                {
+                    if (int.TryParse(gvDataList.Rows[i].Cells[cellIndex].Value.ToString(), out fld_id))
+                        fld_id = int.Parse(gvDataList.Rows[i].Cells[cellIndex].Value.ToString());
+                    else
+                    {
+                        CustomMessageBox.Error(this, "请确认方案id为数值类型");
+                        return;
+                    }
+                }
+
+                cellIndex++;
+                string fld_name = null;
+                if (gvDataList.Rows[i].Cells[cellIndex].Value != null)
+                {
+                    fld_name = gvDataList.Rows[i].Cells[cellIndex].Value.ToString();
+                }
+                else
+                {
+                    CustomMessageBox.Error(this, "错误的方案名称");
+                    return;
+                }
+
+                cellIndex++;
+                string fld_servers = null;
+                if (gvDataList.Rows[i].Cells[cellIndex].Value != null)
+                {
+                    fld_servers = ServerNameToID(gvDataList.Rows[i].Cells[cellIndex].Value.ToString());
+                }
+                else
+                {
+                    CustomMessageBox.Error(this, "错误的服务器");
+                    return;
+                }
+
+
+                cellIndex = 5;
+                string guid = gvDataList.Rows[i].Cells[cellIndex].Value.ToString();
+
+                if (gvDataList.Rows[i].Tag == null)
+                {
+                    FengNiao.GMTools.Database.Model.tbl_activity_solution data = new FengNiao.GMTools.Database.Model.tbl_activity_solution();
+                    data.fld_id = fld_id;
+                    data.fld_name = fld_name;
+                    data.fld_servers = fld_servers;
+
+                    dataList.Add(data);
+                    operationTypes.Add(OperationType.Add);
+                    guidList.Add(guid);
+                }
+                else
+                {
+                    FengNiao.GMTools.Database.Model.tbl_activity_solution data = gvDataList.Rows[i].Tag as FengNiao.GMTools.Database.Model.tbl_activity_solution;
+                    data.fld_id = fld_id;
+                    data.fld_name = fld_name;
+                    data.fld_servers = fld_servers;
+
+                    dataList.Add(data);
+                    operationTypes.Add(OperationType.Update);
+                    guidList.Add(guid);
+                }
+            }
+            if (isError)
+            {
+                CustomMessageBox.Error(this, "保存失败，请根据提示检查数据");
+            }
+            else
+            {
+                if (dataList.Count == operationTypes.Count && dataList.Count == guidList.Count)
+                {
+                    gvDataList.Visible = true;
+                    for (int i = 0; i < dataList.Count; i++)
+                    {
+                        gvDataList.Rows[i].Tag = dataList[i];
+                    }
+
+                    string strArgs = GlobalObject.GetModuleAndMethodArgs(HttpModuleType.Activity_Solution, HttpMethodType.Update);
+                    string strModel = FengNiao.GameTools.Json.Serialize.ConvertObjectToJsonList<List<FengNiao.GMTools.Database.Model.tbl_activity_solution>>(dataList);
+                    string strOperationTypes = FengNiao.GameTools.Json.Serialize.ConvertObjectToJsonList<List<OperationType>>(operationTypes);
+                    string strGuids = FengNiao.GameTools.Json.Serialize.ConvertObjectToJsonList<List<string>>(guidList);
+                    strArgs = string.Format("{0}&Model={1}&OperationType={2}&guid={3}", strArgs, System.Web.HttpUtility.UrlEncode(strModel, Encoding.UTF8), strOperationTypes, strGuids);
+                    CustomWebRequest.Request(GlobalObject.HttpServerIP, strArgs, Encoding.UTF8, UpdateCallback);
+                }
+            }
+        }
+        private void UpdateCallback(object sender, UploadDataCompletedEventArgs e)
+        {
+            loadingControl.Visible = false;
+            if (e.Error == null)
+            {
+                try
+                {
+                    string strContent = Encoding.UTF8.GetString(e.Result);
+                    ResultModel requestResultModel = FengNiao.GameTools.Json.Serialize.ConvertJsonToObject<ResultModel>(strContent);
+                    if (requestResultModel.IsSuccess)
+                    {
+                        List<OperateResultModel> resultModelList = FengNiao.GameTools.Json.Serialize.ConvertJsonToObjectList<OperateResultModel>(requestResultModel.Content);
+                        string strResultMessage = string.Empty;
+                        for (int i = 0; i < resultModelList.Count; i++)
+                        {
+                            TXTHelper.SaveToTXT("D:\\GMTData\\",
+                                                "Solution",
+                                                "\n" + "[" + DateTime.Now.ToString() + "]" + ":  " + resultModelList[i].Content + "\n");
+                        }
+                    }
+                    else
+                    {
+                        CustomMessageBox.Error(this, string.Format("导入活动失败\r\n{0}", requestResultModel.Content));
+                    }
+                }
+                catch
+                {
+                    CustomMessageBox.Error(this, "服务器返回的数据无效");
+                }
+                CustomMessageBox.Info(this, "操作完成,日志已保存");
+            }
+            else
+            {
+                CustomMessageBox.Error(this, "连接服务器异常，请确认是否已经联网");
+            }
+        }
+        
+        private void gvDataList_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex > (gvDataList.RowCount - 1) || e.RowIndex < 0)
+            {
+                return;
+            }
+            else if (e.ColumnIndex == 3)
+            {
+                //SelectForm frmSelectForm = new SelectForm(SELECTTYPE.SERVERGROUP, gvDataList.Rows[e.RowIndex].Cells[e.ColumnIndex].Value == null ? "" : gvDataList.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString());
+                //if (frmSelectForm.ShowDialog() == DialogResult.OK)
+                //{
+                //    List<FengNiao.GMTools.Database.Model.tbl_server_group> selectedItems = frmSelectForm.GetServerGroups();
+
+                //    string serverlist = string.Empty;
+                //    foreach (var item in selectedItems)
+                //    {
+                //        serverlist = serverlist + item.fld_group_name + ";";
+                //    }
+                //    if (serverlist.Contains(";"))
+                //        gvDataList.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = serverlist.Substring(0, serverlist.LastIndexOf(';'));
+                //    else
+                //        gvDataList.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = "";
+                //}
+
+                AsyncToOtherServers frmAsyncToOtherServers = new AsyncToOtherServers(new FengNiao.GMTools.Database.Model.tbl_server(), (FengNiao.GMTools.Database.Model.tbl_activity_solution)(gvDataList.Rows[e.RowIndex].Tag));
+                if (frmAsyncToOtherServers.ShowDialog() == DialogResult.OK)
+                {
+                    string serverlist = string.Empty;
+                    foreach (var item in frmAsyncToOtherServers.serverList)
+                    {
+                        serverlist = serverlist + item.fld_server_name + ";";
+                    }
+                    if (serverlist.Contains(";"))
+                        gvDataList.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = serverlist.Substring(0, serverlist.LastIndexOf(';'));
+                    else
+                        gvDataList.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = "";
+                }
+            }
+            else if(e.ColumnIndex == 4)
+            {
+                if (gvDataList.Rows[e.RowIndex].Tag != null)
+                {
+                    CustomMessageBox.Error(this, "不能删除已经生效的数据");
+                    return;
+                }
+                if (DialogResult.Yes == CustomMessageBox.Confirm(this, "确定要删除记录么?"))
+                {
+                    gvDataList.Rows.RemoveAt(e.RowIndex);
+                }
+            }
+        }
+        
+        private void btnNew_Click(object sender, EventArgs e)
+        {
+            int index = gvDataList.Rows.Add();
+            gvDataList.Rows[index].Cells[5].Value = Guid.NewGuid();
+        }
+
+        private void btnRefresh_Click(object sender, EventArgs e)
+        {
+            Init();
+        }
+
+        private bool CheckRepeate(ref int rowOne, ref int rowTwo)
+        {
+            int count = gvDataList.RowCount;
+            for (int i = 0; i < count; i++)
+            {
+                string[] currentServers = gvDataList.Rows[i].Cells[3].Value.ToString().Split(';');
+                for (int j = i + 1; j < count; j++)
+                {
+                    string[] compareServers = gvDataList.Rows[j].Cells[3].Value.ToString().Split(';');
+                    bool isDifferent = CompareStrArr(currentServers, compareServers);
+                    if (!isDifferent)
+                    {
+                        rowOne = i;
+                        rowTwo = j;
+                    }
+                    return isDifferent;
+                }
+            }
+            return true;
+        }
+        private bool CompareStrArr(string[] a, string[] b)
+        {
+            HashSet<string> compareHash = new HashSet<string>();
+            for (int i = 0; i < a.Length; i++)
+            {
+                compareHash.Add(a[i]);
+            }
+            for (int j = 0; j < b.Length; j++)
+            {
+                compareHash.Add(b[j]);
+            }
+            if (compareHash.Count != a.Length + b.Length)
+            {
+                return false;
+            }
+            return true;
+        }
+
+
+    }
+}
