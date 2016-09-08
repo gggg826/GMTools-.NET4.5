@@ -206,7 +206,7 @@
             this.labelX12.Name = "labelX12";
             this.labelX12.Size = new System.Drawing.Size(77, 23);
             this.labelX12.TabIndex = 50;
-            this.labelX12.Text = "奖励道具1：";
+            this.labelX12.Text = "奖励道具2：";
             this.labelX12.TextAlignment = System.Drawing.StringAlignment.Center;
             // 
             // tbCount2
@@ -263,7 +263,7 @@
             this.labelX14.Name = "labelX14";
             this.labelX14.Size = new System.Drawing.Size(77, 23);
             this.labelX14.TabIndex = 50;
-            this.labelX14.Text = "奖励道具1：";
+            this.labelX14.Text = "奖励道具3：";
             this.labelX14.TextAlignment = System.Drawing.StringAlignment.Center;
             // 
             // tbCount3
@@ -320,7 +320,7 @@
             this.labelX16.Name = "labelX16";
             this.labelX16.Size = new System.Drawing.Size(77, 23);
             this.labelX16.TabIndex = 50;
-            this.labelX16.Text = "奖励道具1：";
+            this.labelX16.Text = "奖励道具4：";
             this.labelX16.TextAlignment = System.Drawing.StringAlignment.Center;
             // 
             // tbCount4

@@ -117,11 +117,6 @@ namespace GameToolsClient
                 CustomMessageBox.Error(this, "奖励道具4不能为空");
                 return;
             }
-            if (!int.TryParse(tbDataid.Text.ToString(), out temp) && int.TryParse(tbDataid.Text.ToString(), out count))
-            {
-                CustomMessageBox.Error(this, "资料编号不能为空");
-                return;
-            }
             config.rewardName4 = temp;
             config.rewardCount4 = count;
 

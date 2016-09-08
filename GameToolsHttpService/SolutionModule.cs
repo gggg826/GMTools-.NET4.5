@@ -104,7 +104,7 @@ namespace GameToolsHttpService
                 {
                     try
                     {
-                        string serverIP = server[i].fld_server_ip;
+                        string serverIP = server[0].fld_server_ip;
                         if (!string.IsNullOrEmpty(serverIP))
                         {
                             string strArgs = "cmd=reload_activity";

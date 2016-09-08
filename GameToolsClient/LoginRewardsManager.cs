@@ -9,6 +9,7 @@ using FengNiao.GameTools.Util;
 using FengNiao.GameToolsCommon;
 using GameToolsCommon;
 using System.Net;
+using FengNiao.GMTools.Database.Model;
 
 namespace GameToolsClient
 {
@@ -185,11 +186,11 @@ namespace GameToolsClient
                                 config.dataid);
         }
 
-        public bool isCanAdd(string date)
+        public bool isCanAdd(tbl_login_rewards_config config)
         {
             for (int i = 0; i < gvDataList.RowCount; i++)
             {
-                if (gvDataList.Rows[i].Cells[1].Value.ToString() == date)
+                if (gvDataList.Rows[i].Cells[1].Value.ToString() == config.date.ToString() && gvDataList.Rows[i].Cells[11].Value.ToString() == config.dataid.ToString())
                     return false;
             }
             return true;

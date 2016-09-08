@@ -212,6 +212,7 @@ namespace GameToolsHttpService
                         countModel.max_counts = counts[i].count;
                         countModel.describes = counts[i].dec;
                         countModel.kindofreward = counts[i].kindofrewards;
+                        countModel.dataid = counts[i].dataid;
 
                         reward reward1 = new reward();
                         reward1.item_id = counts[i].reward1;

@@ -185,9 +185,7 @@ namespace GameToolsClient
         {
             for (int i = 0; i < gvDataList.RowCount;i++ )
             {
-                FengNiao.GMTools.Database.Model.tbl_sucession_rewards_config temp = gvDataList.Rows[i].Tag as FengNiao.GMTools.Database.Model.tbl_sucession_rewards_config;
-                //if (gvDataList.Rows[i].Cells[1].Value.ToString() == date)
-                if(temp == config)
+                if (gvDataList.Rows[i].Cells[1].Value.ToString() == config.date.ToString() && gvDataList.Rows[i].Cells[11].Value.ToString() == config.dataid.ToString())
                     return false;
             }
             return true;

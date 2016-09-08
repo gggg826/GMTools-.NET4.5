@@ -218,6 +218,7 @@ namespace GameToolsHttpService
         public string describes { set; get; }
         public int kindofreward { set; get; }
         public List<reward> rewards = new List<reward>();
+        public int dataid { get; set; }
 
         public void Add(reward reward1, reward reward2, reward reward3, reward reward4)
         {

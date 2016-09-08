@@ -126,7 +126,7 @@ namespace GameToolsClient
             config.dataid = temp;
             config.serverID = CurrentServerData.fld_server_id;
 
-            if (mParent.isCanAdd(config.date.ToString()))
+            if (mParent.isCanAdd(config))
             {
                 mParent.AddRow(config);
                 this.Close();

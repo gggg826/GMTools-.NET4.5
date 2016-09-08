@@ -88,7 +88,7 @@ namespace FengNiao.GMTools.Database.DAL
             strSql.Append("fld_preview_time=@fld_preview_time,");
             strSql.Append("fld_open_time=@fld_open_time,");
             strSql.Append("fld_close_time=@fld_close_time,");
-            strSql.Append("fld_award_time=@fld_award_time");
+            strSql.Append("fld_award_time=@fld_award_time,");
             strSql.Append("fld_dataid=@fld_dataid");
             strSql.Append(" where fld_record_id=@fld_record_id");
             MySqlParameter[] parameters = {
